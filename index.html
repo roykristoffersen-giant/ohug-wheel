@@ -197,7 +197,7 @@
       <button class="btn" type="button" id="copyUrl">Copy link</button>
     </div>
   </section>
-  <p id="ver" style="margin:-24px 0 30px;text-align:center;font-size:12px;color:var(--muted)">Version 15</p>
+  <p id="ver" style="margin:-24px 0 30px;text-align:center;font-size:12px;color:var(--muted)">Version 16</p>
 </div>
 
 <div class="win" id="win" hidden role="dialog" aria-modal="true" aria-labelledby="winName">
@@ -430,10 +430,13 @@
 
   var clickBuf = null, lastTickAt = 0;
   function makeClick(ctx) {
-    var sr = ctx.sampleRate, len = Math.floor(sr * 0.07), b = ctx.createBuffer(1, len, sr), d = b.getChannelData(0);
+    // Phone speakers are strongest around 2-4 kHz and need ~50 ms of sound to register.
+    var sr = ctx.sampleRate, len = Math.floor(sr * 0.1), b = ctx.createBuffer(1, len, sr), d = b.getChannelData(0);
     for (var i = 0; i < len; i++) {
-      var t = i / sr, env = Math.exp(-t * 70);
-      d[i] = env * (0.75 * Math.sin(2 * Math.PI * 1300 * t) + 0.35 * Math.sin(2 * Math.PI * 650 * t) + 0.15 * (Math.random() * 2 - 1));
+      var t = i / sr;
+      var env = t < 0.002 ? t / 0.002 : Math.exp(-(t - 0.002) * 32);
+      var s = 0.55 * Math.sin(2 * Math.PI * 2400 * t) + 0.35 * Math.sin(2 * Math.PI * 1600 * t) + 0.2 * Math.sin(2 * Math.PI * 3200 * t);
+      d[i] = Math.max(-0.95, Math.min(0.95, env * s * 1.1));
     }
     return b;
   }
@@ -446,7 +449,7 @@
       // currentTime would already be over before it is heard.
       // A pre-rendered click buffer: plays the same on every phone, no envelopes to miss.
       var now = performance.now();
-      if (now - lastTickAt < 35) return;   // at full speed, don't stack clicks
+      if (now - lastTickAt < 60) return;   // at full speed, don't stack clicks
       lastTickAt = now;
       if (!clickBuf) clickBuf = makeClick(audio);
       var src = audio.createBufferSource(); src.buffer = clickBuf;
