@@ -231,8 +231,17 @@
   ];
 
   // ---- State --------------------------------------------------------------
-  var DEFAULT_PRIZES = [{ id: "p1", name: "Prize 1", count: 1 }, { id: "p2", name: "Prize 2", count: 1 }];
-  var state = { sheet: [], manual: [], removed: [], winners: [], spin: null, prizes: DEFAULT_PRIZES.slice() };
+  // Bump PRIZES_VER when DEFAULT_PRIZES change: every phone and the shared wheel then switch to the new list once.
+  var PRIZES_VER = 2;
+  var DEFAULT_PRIZES = [
+    { id: "k1", name: "Houdini Indie License - 3 months", count: 1 },
+    { id: "k2", name: "Houdini Indie License - 3 months", count: 1 },
+    { id: "k3", name: "Houdini Indie License - 3 months", count: 1 },
+    { id: "k4", name: "50 dollars to spend in the Houdini Online store", count: 1 },
+    { id: "k5", name: "50 dollars to spend in the Houdini Online store", count: 1 }
+  ];
+  function defaultPrizes() { return JSON.parse(JSON.stringify(DEFAULT_PRIZES)); }
+  var state = { sheet: [], manual: [], removed: [], winners: [], spin: null, prizes: defaultPrizes(), prizesVer: PRIZES_VER };
   var canHost = false;       // may spin and edit
   var db = null, docRef = null, mcp = null, user = null;
   var rot = 0;               // current wheel rotation (radians)
@@ -269,7 +278,10 @@
       .concat(state.manual.map(function (e) { return { id: e.id, name: e.name, src: "added" }; })); }
 
   // ---- Persistence --------------------------------------------------------
-  function localLoad() { try { var s = localStorage.getItem("ohug-wheel"); if (s) Object.assign(state, JSON.parse(s)); } catch (e) {} }
+  function localLoad() {
+    try { var s = localStorage.getItem("ohug-wheel"); if (s) Object.assign(state, JSON.parse(s)); } catch (e) {}
+    if (state.prizesVer !== PRIZES_VER) { state.prizes = defaultPrizes(); state.prizesVer = PRIZES_VER; localSave(); }
+  }
   function localSave() { try { localStorage.setItem("ohug-wheel", JSON.stringify(state)); } catch (e) {} }
 
   function save(patch) {
@@ -780,7 +792,8 @@
         var d = snap.exists ? snap.data() : null;
         if (d) {
           state = { sheet: d.sheet || [], manual: d.manual || [], removed: d.removed || [], winners: d.winners || [], spin: d.spin || null,
-                    prizes: Array.isArray(d.prizes) ? d.prizes : DEFAULT_PRIZES.slice() };
+                    prizes: Array.isArray(d.prizes) && d.prizesVer === PRIZES_VER ? d.prizes : defaultPrizes(), prizesVer: PRIZES_VER };
+          if (d.prizesVer !== PRIZES_VER && canHost) save({});
           var sp = state.spin;
           if (sp && sp.id !== lastSpinId) {
             lastSpinId = sp.id;
