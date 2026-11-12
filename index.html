@@ -279,8 +279,9 @@
 
   // ---- Persistence --------------------------------------------------------
   function localLoad() {
-    try { var s = localStorage.getItem("ohug-wheel"); if (s) Object.assign(state, JSON.parse(s)); } catch (e) {}
-    if (state.prizesVer !== PRIZES_VER) { state.prizes = defaultPrizes(); state.prizesVer = PRIZES_VER; localSave(); }
+    var saved = null;
+    try { var s = localStorage.getItem("ohug-wheel"); if (s) { saved = JSON.parse(s); Object.assign(state, saved); } } catch (e) {}
+    if (saved && saved.prizesVer !== PRIZES_VER) { state.prizes = defaultPrizes(); state.prizesVer = PRIZES_VER; localSave(); }
   }
   function localSave() { try { localStorage.setItem("ohug-wheel", JSON.stringify(state)); } catch (e) {} }
 
