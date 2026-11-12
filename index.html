@@ -556,7 +556,9 @@
     $("prizeHostRow").hidden = !canHost;
     // Don't rebuild while the host is typing in it.
     var key = JSON.stringify([canHost, state.prizes, state.winners.map(function (w) { return w.prizeId; })]);
-    if (key === prizeKey || box.contains(document.activeElement)) return;
+    var ae = document.activeElement;
+    var typing = ae && ae.tagName === "INPUT" && box.contains(ae);
+    if (key === prizeKey || typing) return;
     prizeKey = key; box.innerHTML = "";
     if (!state.prizes.length) {
       var e = document.createElement("p"); e.className = "empty";
@@ -581,7 +583,7 @@
         meta.appendChild(lab);
         var st = document.createElement("span"); st.textContent = given + " won"; meta.appendChild(st);
         var del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "Delete";
-        del.onclick = function () { save({ prizes: state.prizes.filter(function (x) { return x.id !== p.id; }) }); };
+        del.onclick = function () { del.blur(); save({ prizes: state.prizes.filter(function (x) { return x.id !== p.id; }) }); };
         meta.appendChild(del);
       } else {
         var tt = document.createElement("span"); tt.className = "ptitle"; tt.textContent = p.name; row.appendChild(tt);
