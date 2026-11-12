@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="OHUG Wheel">
+<meta name="theme-color" content="#0b0b0b">
+<style>html,body{margin:0;background:#0b0b0b}</style>
+</head>
+<body>
+<title>OHUG Prize Wheel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  /* Layout: flyer-style black stage with the wheel as hero, orange tool panels below. Single brand look (no light/dark switch). */
+  :root {
+    --stage: #0b0b0b;
+    --panel: #161311;
+    --line: #2c2420;
+    --orange: #f26a22;
+    --orange-deep: #b8460f;
+    --cream: #fff3ea;
+    --white: #ffffff;
+    --muted: #b9a89c;
+    --ink: #1a0d05;
+    --font: "Lato", "Helvetica Neue", Arial, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { min-height: 100%; }
+  body { margin: 0; background: var(--stage); color: var(--white); font-family: var(--font); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+  .wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+  header { padding-block: 18px 6px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .logo { line-height: .9; }
+  .logo .t { display: block; font-weight: 300; font-size: 17px; letter-spacing: .04em; }
+  .logo .h { display: flex; align-items: center; gap: 6px; font-weight: 900; font-size: 34px; letter-spacing: -.02em; }
+  .sq { width: 21px; height: 21px; background: var(--orange); display: inline-grid; place-items: center; }
+  .sq svg { width: 84%; height: 84%; }
+  .event { text-align: right; font-size: 13px; line-height: 1.35; color: var(--muted); }
+  .event b { color: var(--orange); font-weight: 900; font-size: 15px; letter-spacing: .02em; text-transform: uppercase; display: block; }
+
+  .stage { position: relative; margin: 10px auto 0; width: min(100%, 560px); aspect-ratio: 1; max-width: 100%; }
+  #wheel { width: 100%; height: 100%; display: block; cursor: pointer; touch-action: manipulation; }
+  .pointer { position: absolute; left: 50%; top: -6px; width: 34px; height: 44px; transform: translateX(-50%); transform-origin: 50% 8px; pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
+  .pointer.flick { animation: flick .12s ease-out; }
+  @keyframes flick { 0% { transform: translateX(-50%) rotate(0); } 40% { transform: translateX(-50%) rotate(-16deg); } 100% { transform: translateX(-50%) rotate(0); } }
+
+  .controls { display: grid; gap: 10px; margin: 18px 0 6px; }
+  .spin { font: 900 26px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink); background: var(--orange); border: 0; padding: 18px; cursor: pointer; }
+  .spin:active { background: var(--orange-deep); color: var(--white); }
+  .spin:disabled { opacity: .45; cursor: default; }
+  .spin:focus-visible, button:focus-visible, input:focus-visible, .tab:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
+  .status { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .status b { color: var(--white); }
+  .note { font-size: 14px; line-height: 1.45; color: var(--cream); background: var(--panel); border-left: 4px solid var(--orange); padding: 10px 12px; margin: 10px 0 0; }
+
+  .prizes { display: grid; gap: 10px; }
+  .prize { display: grid; grid-template-columns: 34px 1fr; gap: 6px 10px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .prize .num { font-weight: 900; font-size: 24px; color: var(--orange); font-variant-numeric: tabular-nums; }
+  .prize .pname { width: 100%; }
+  .prize .pmeta { grid-column: 2; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+  .prize .pmeta input { width: 70px; font: 400 17px var(--font); color: var(--ink); background: var(--cream); border: 0; padding: 8px 10px; border-radius: 0; }
+  .prize .ptitle { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+  .prize.done .ptitle { color: var(--muted); }
+  .prizeline { color: var(--orange); font-weight: 700; }
+  .tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin-top: 22px; border-bottom: 2px solid var(--orange); }
+  .tab { font: 700 14px var(--font); letter-spacing: .06em; text-transform: uppercase; background: transparent; color: var(--muted); border: 0; padding: 12px 4px; cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--orange); color: var(--ink); }
+  .pane { background: var(--panel); padding: 16px; margin-bottom: 40px; }
+  .pane h2 { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+
+  .signup { display: grid; gap: 8px; margin-bottom: 18px; padding-bottom: 18px; border-bottom: 2px solid var(--orange); }
+  .signup label { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--cream); margin-top: 4px; }
+  .signup .hint { margin: 0 0 4px; font-size: 14px; line-height: 1.45; color: var(--muted); }
+  .signup .consent { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 15px; line-height: 1.4; margin: 6px 0 2px; cursor: pointer; }
+  .signup .consent input { width: 22px; height: 22px; margin: 0; accent-color: var(--orange); }
+  .btn.big { font-size: 17px; padding: 15px; background: var(--orange); color: var(--ink); }
+  .formerr { background: var(--stage); border-left: 4px solid var(--orange); padding: 10px 12px; font-size: 15px; }
+  .added { background: var(--orange); color: var(--ink); padding: 12px; font-weight: 900; font-size: 18px; overflow-wrap: anywhere; }
+  input[type=email] { font: 400 17px var(--font); color: var(--ink); background: var(--cream); border: 0; padding: 12px; min-width: 0; border-radius: 0; }
+  input[type=text] { font: 400 17px var(--font); color: var(--ink); background: var(--cream); border: 0; padding: 12px; min-width: 0; border-radius: 0; }
+  .btn { font: 700 14px var(--font); letter-spacing: .05em; text-transform: uppercase; background: var(--white); color: var(--ink); border: 0; padding: 10px 14px; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--cream); border: 1.5px solid var(--line); }
+  .btn.danger { background: transparent; color: var(--orange); border: 1.5px solid var(--orange); }
+  ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  ul.list li { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+  ul.list .n { min-width: 0; overflow-wrap: anywhere; font-size: 16px; }
+  ul.list .src { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-left: 6px; }
+  ul.list li.out .n { color: var(--muted); text-decoration: line-through; }
+  .dot { width: 14px; height: 14px; }
+  .mini { font: 700 12px var(--font); letter-spacing: .05em; text-transform: uppercase; background: transparent; color: var(--cream); border: 1.5px solid var(--line); padding: 6px 9px; cursor: pointer; }
+  .empty { color: var(--muted); font-size: 15px; line-height: 1.5; padding: 6px 0; }
+  ol.winners { margin: 0; padding: 0; list-style: none; counter-reset: w; display: grid; gap: 2px; }
+  ol.winners li { counter-increment: w; display: grid; grid-template-columns: 36px 1fr auto; align-items: baseline; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  ol.winners li::before { content: counter(w); font-weight: 900; font-size: 22px; color: var(--orange); font-variant-numeric: tabular-nums; }
+  ol.winners .n { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+  ol.winners time { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+  .qrbox { display: grid; justify-items: center; gap: 12px; text-align: center; }
+  #qr { background: var(--white); padding: 14px; width: min(100%, 300px); aspect-ratio: 1; max-width: 100%; }
+  #qr img, #qr canvas { width: 100% !important; height: auto !important; display: block; }
+  .url { font-size: 14px; color: var(--cream); overflow-wrap: anywhere; user-select: all; }
+
+  /* Winner overlay */
+  .win { position: fixed; inset: 0; z-index: 50; background: var(--orange); color: var(--ink); display: grid; place-items: center;
+         padding: calc(24px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px)); }
+  #confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .wincard { position: relative; text-align: center; max-width: 640px; width: 100%; animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .wintag { display: inline-block; background: var(--stage); color: var(--orange); font-weight: 900; letter-spacing: .14em; text-transform: uppercase; font-size: 15px; padding: 8px 14px; }
+  .winname { font-weight: 900; font-size: clamp(44px, 14vw, 110px); line-height: .98; letter-spacing: -.02em; margin: 18px 0 8px; overflow-wrap: anywhere; text-wrap: balance; }
+  .winsub { font-size: 18px; font-weight: 700; margin: 0 0 26px; }
+  .winbtns { display: grid; gap: 10px; max-width: 360px; margin: 0 auto; }
+  .winbtns button { font: 900 18px var(--font); letter-spacing: .06em; text-transform: uppercase; border: 0; padding: 16px; cursor: pointer; }
+  .wb-primary { background: var(--stage); color: var(--white); }
+  .wb-secondary { background: transparent; color: var(--ink); border: 2px solid var(--ink) !important; }
+
+  @media (prefers-reduced-motion: reduce) { .wincard { animation: none; } .pointer.flick { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo" aria-label="Oslo Houdini User Group">
+      <span class="t">OSLO</span>
+      <span class="h">Houdini <span class="sq" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M20 20 a2 2 0 0 1 2 2 a4 4 0 0 1 -4 4 a6 6 0 0 1 -6 -6 a8 8 0 0 1 8 -8 a10 10 0 0 1 10 10 a12 12 0 0 1 -12 12" fill="none" stroke="#0b0b0b" stroke-width="3.6"/></svg></span></span>
+      <span class="t">USER GROUP</span>
+    </div>
+    <div class="event"><b>Kickoff prize draw</b>Thu 12 Nov 2026 · Tilt, Oslo · 18.00</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="wheel" aria-label="Prize wheel. Tap to spin." role="img"></canvas>
+    <svg class="pointer" id="pointer" viewBox="0 0 34 44" aria-hidden="true"><path d="M3 3 H31 L17 41 Z" fill="#ffffff" stroke="#0b0b0b" stroke-width="3" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div class="controls">
+    <button class="spin" id="spinBtn" type="button">Spin</button>
+    <div class="status"><span id="count">Loading…</span><span id="sync"></span><button class="mini" type="button" id="soundBtn" aria-pressed="true">Sound on</button></div>
+    <p class="note" id="note" hidden></p>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="t-entries" aria-selected="true" aria-controls="p-entries">Entries</button>
+    <button class="tab" role="tab" id="t-prizes" aria-selected="false" aria-controls="p-prizes">Prizes</button>
+    <button class="tab" role="tab" id="t-winners" aria-selected="false" aria-controls="p-winners">Winners</button>
+    <button class="tab" role="tab" id="t-signup" aria-selected="false" aria-controls="p-signup">Sign-up QR</button>
+  </div>
+
+  <section class="pane" id="p-entries" role="tabpanel" aria-labelledby="t-entries">
+    <form class="signup" id="addForm" hidden novalidate>
+      <h2>Join the draw</h2>
+      <p class="hint">Hand the phone around, or type names yourself. Only the organisers see the emails.</p>
+      <label for="addName">Name on the wheel</label>
+      <input type="text" id="addName" maxlength="40" autocomplete="off">
+      <label for="addEmail">Email</label>
+      <input type="text" id="addEmail" maxlength="120" autocomplete="off" inputmode="email">
+      <div class="formerr" id="addErr" role="alert" hidden></div>
+      <button class="btn big" type="submit">Put me on the wheel</button>
+      <div class="added" id="addOk" role="status" hidden></div>
+    </form>
+    <ul class="list" id="entryList"></ul>
+    <div class="row" id="resetRow" hidden>
+      <button class="btn danger" type="button" id="resetBtn">Reset draw</button>
+      <button class="btn ghost" type="button" id="resetYes" hidden>Yes, clear winners and put everyone back</button>
+      <button class="btn danger" type="button" id="wipeBtn">Delete all names</button>
+      <button class="btn ghost" type="button" id="copyEmails">Copy names + emails</button>
+      <button class="btn ghost" type="button" id="refreshBtn" hidden>Refresh sign-ups now</button>
+    </div>
+    <textarea id="emailDump" readonly hidden aria-label="Names and emails" style="width:100%;min-height:140px;margin-top:10px;font:14px/1.5 var(--font);background:var(--stage);color:var(--cream);border:1px solid var(--line);padding:10px"></textarea>
+  </section>
+
+  <section class="pane" id="p-prizes" role="tabpanel" aria-labelledby="t-prizes" hidden>
+    <h2>Prizes, drawn in this order</h2>
+    <div id="prizeList" class="prizes"></div>
+    <div class="row" id="prizeHostRow" hidden>
+      <button class="btn" type="button" id="addPrize">Add prize</button>
+    </div>
+  </section>
+
+  <section class="pane" id="p-winners" role="tabpanel" aria-labelledby="t-winners" hidden>
+    <h2>Winners, in order</h2>
+    <ol class="winners" id="winList"></ol>
+  </section>
+
+  <section class="pane" id="p-signup" role="tabpanel" aria-labelledby="t-signup" hidden>
+    <div class="qrbox">
+      <h2>Scan to join the draw</h2>
+      <div id="qr" aria-label="QR code for the sign-up page"></div>
+      <div class="url" id="signupUrl"></div>
+      <button class="btn" type="button" id="copyUrl">Copy link</button>
+    </div>
+  </section>
+</div>
+
+<div class="win" id="win" hidden role="dialog" aria-modal="true" aria-labelledby="winName">
+  <canvas id="confetti"></canvas>
+  <div class="wincard">
+    <span class="wintag" id="winTag">Winner</span>
+    <div class="winname" id="winName"></div>
+    <p class="winsub" id="winSub">Come grab your prize!</p>
+    <div class="winbtns" id="winHost">
+      <button class="wb-primary" id="winRemove" type="button">Remove from wheel</button>
+      <button class="wb-secondary" id="winKeep" type="button">Keep on wheel</button>
+    </div>
+    <div class="winbtns" id="winGuest" hidden>
+      <button class="wb-primary" id="winClose" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---- Config -------------------------------------------------------------
+  var SHEET_ID = "__SHEET_ID__";          // Google Sheet that the sign-up site writes to
+  var SIGNUP_URL = "__SIGNUP_URL__";      // public sign-up web app (/exec)
+  var NAME_RANGE = "Signups!B2:B";        // names only: the wheel never reads emails
+  var SHEETS = "Google Sheets";
+  var EXAMPLE = ["Kari", "Ola", "Ingrid", "Magnus", "Sofie", "Jonas"];
+
+  var COLORS = [
+    { bg: "#f26a22", fg: "#0b0b0b" },
+    { bg: "#0b0b0b", fg: "#ffffff" },
+    { bg: "#b8460f", fg: "#ffffff" },
+    { bg: "#fff3ea", fg: "#0b0b0b" }
+  ];
+
+  // ---- State --------------------------------------------------------------
+  var DEFAULT_PRIZES = [{ id: "p1", name: "Prize 1", count: 1 }, { id: "p2", name: "Prize 2", count: 1 }];
+  var state = { sheet: [], manual: [], removed: [], winners: [], spin: null, prizes: DEFAULT_PRIZES.slice() };
+  var canHost = false;       // may spin and edit
+  var db = null, docRef = null, mcp = null, user = null;
+  var rot = 0;               // current wheel rotation (radians)
+  var spinning = false;
+  var lastSpinId = null;
+  var sheetSyncedAt = 0;
+  var writeChain = Promise.resolve();
+
+  var $ = function (id) { return document.getElementById(id); };
+  var canvas = $("wheel"), ctx = canvas.getContext("2d");
+  var reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function uid() { return Math.random().toString(36).slice(2, 10); }
+
+  function entries() {
+    var out = [];
+    var removed = {}; state.removed.forEach(function (id) { removed[id] = 1; });
+    state.sheet.forEach(function (e) { if (!removed[e.id]) out.push(e); });
+    state.manual.forEach(function (e) { if (!removed[e.id]) out.push(e); });
+    return out;
+  }
+  // Prizes are drawn in list order; each has `count` winners.
+  function prizeGiven(p) { return state.winners.filter(function (w) { return w.prizeId === p.id; }).length; }
+  function nextPrize() {
+    for (var i = 0; i < state.prizes.length; i++) {
+      var p = state.prizes[i], g = prizeGiven(p);
+      if (g < p.count) return { prize: p, index: i, nth: g + 1 };
+    }
+    return null;
+  }
+  function prizesDone() { return state.prizes.length > 0 && !nextPrize(); }
+
+  function allEntries() { return state.sheet.map(function (e) { return { id: e.id, name: e.name, src: "signed up" }; })
+      .concat(state.manual.map(function (e) { return { id: e.id, name: e.name, src: "added" }; })); }
+
+  // ---- Persistence --------------------------------------------------------
+  function localLoad() { try { var s = localStorage.getItem("ohug-wheel"); if (s) Object.assign(state, JSON.parse(s)); } catch (e) {} }
+  function localSave() { try { localStorage.setItem("ohug-wheel", JSON.stringify(state)); } catch (e) {} }
+
+  function save(patch) {
+    Object.assign(state, patch);
+    render();
+    var snapshot = JSON.parse(JSON.stringify(state));
+    if (docRef && canHost) {
+      writeChain = writeChain.then(function () { return docRef.set(snapshot); }).catch(function (e) {
+        showNote("Could not save to the shared wheel (" + (e && e.code || "error") + "). Changes stay on this phone for now.");
+        localSave();
+      });
+    } else { localSave(); }
+  }
+
+  function showNote(msg) { var n = $("note"); if (!msg) { n.hidden = true; return; } n.textContent = msg; n.hidden = false; }
+
+  // ---- Drawing ------------------------------------------------------------
+  var size = 0;
+  function resize() {
+    var r = canvas.getBoundingClientRect();
+    var dpr = Math.min(window.devicePixelRatio || 1, 3);
+    size = r.width;
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.width * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function sliceColors(n) {
+    var c = [];
+    for (var i = 0; i < n; i++) c.push(COLORS[i % 4]);
+    if (n > 1 && n % 4 === 1) c[n - 1] = COLORS[2];
+    return c;
+  }
+
+  function drawList() {
+    var e = entries();
+    return e;
+  }
+
+  function draw() {
+    if (!size) return;
+    var list = (spinning && currentOrder) ? currentOrder : drawList();
+    var n = list.length, cx = size / 2, cy = size / 2, R = size / 2 - 6;
+    ctx.clearRect(0, 0, size, size);
+
+    // rim
+    ctx.beginPath(); ctx.arc(cx, cy, R + 4, 0, Math.PI * 2); ctx.fillStyle = "#f26a22"; ctx.fill();
+
+    if (!n) {
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = "#161311"; ctx.fill();
+      ctx.fillStyle = "#b9a89c"; ctx.font = "700 " + Math.round(size * 0.045) + "px Lato, sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(allEntries().length ? "Everyone has won!" : "Add names to start", cx, cy - size * 0.18);
+    } else {
+      var s = Math.PI * 2 / n, cols = sliceColors(n);
+      var fs = Math.max(10, Math.min(size * 0.06, (size * 1.9) / n, 30));
+      for (var i = 0; i < n; i++) {
+        var a0 = rot + i * s, a1 = a0 + s;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a1); ctx.closePath();
+        ctx.fillStyle = cols[i].bg; ctx.fill();
+        if (n > 1) { ctx.strokeStyle = "rgba(11,11,11,.55)"; ctx.lineWidth = 1; ctx.stroke(); }
+        // label
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(a0 + s / 2);
+        ctx.fillStyle = cols[i].fg; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+        ctx.font = "900 " + fs + "px Lato, sans-serif";
+        var maxW = R * 0.66, label = list[i].name;
+        if (ctx.measureText(label).width > maxW) {
+          while (label.length > 1 && ctx.measureText(label + "…").width > maxW) label = label.slice(0, -1);
+          label += "…";
+        }
+        ctx.fillText(label, R - 14, 0);
+        ctx.restore();
+      }
+    }
+
+    // hub: black disc with the spiral
+    var hr = size * 0.11;
+    ctx.beginPath(); ctx.arc(cx, cy, hr + 5, 0, Math.PI * 2); ctx.fillStyle = "#f26a22"; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, hr, 0, Math.PI * 2); ctx.fillStyle = "#0b0b0b"; ctx.fill();
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
+    ctx.beginPath();
+    for (var t = 0; t <= 1; t += 0.01) {
+      var ang = t * Math.PI * 5, rad = t * hr * 0.78;
+      var x = Math.cos(ang) * rad, y = Math.sin(ang) * rad;
+      if (t === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = "#f26a22"; ctx.lineWidth = Math.max(3, hr * 0.12); ctx.lineCap = "round"; ctx.stroke();
+    ctx.restore();
+  }
+
+  // ---- Sound --------------------------------------------------------------
+  var audio = null;
+  var soundOn = true;
+  try { soundOn = localStorage.getItem("ohug-sound") !== "off"; } catch (e) {}
+  function showSound() {
+    $("soundBtn").textContent = soundOn ? "🔊 Sound on" : "🔇 Sound off";
+    $("soundBtn").setAttribute("aria-pressed", soundOn ? "true" : "false");
+  }
+  $("soundBtn").onclick = function () {
+    soundOn = !soundOn; showSound();
+    try { localStorage.setItem("ohug-sound", soundOn ? "on" : "off"); } catch (e) {}
+    if (soundOn) tick();
+  };
+  showSound();
+  function tick() {
+    if (!soundOn) return;
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      var t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
+      o.type = "square"; o.frequency.setValueAtTime(1500, t); o.frequency.exponentialRampToValueAtTime(600, t + 0.03);
+      g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+      o.connect(g); g.connect(audio.destination); o.start(t); o.stop(t + 0.05);
+    } catch (e) {}
+  }
+  function fanfare() {
+    try {
+      if (!audio || !soundOn) return;
+      [523, 659, 784, 1047].forEach(function (f, i) {
+        var t = audio.currentTime + i * 0.11, o = audio.createOscillator(), g = audio.createGain();
+        o.type = "triangle"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + (i === 3 ? 0.7 : 0.18));
+        o.connect(g); g.connect(audio.destination); o.start(t); o.stop(t + 0.8);
+      });
+    } catch (e) {}
+  }
+
+  // ---- Spin ---------------------------------------------------------------
+  var POINTER = -Math.PI / 2, TAU = Math.PI * 2;
+  var currentOrder = null;
+  function mod(a, m) { return ((a % m) + m) % m; }
+  function sliceAt(r, n) { return Math.floor(mod(POINTER - r, TAU) / (TAU / n)); }
+
+  function startSpin() {
+    if (!canHost || spinning) return;
+    var list = entries();
+    if (!list.length || prizesDone()) return;
+    var np = nextPrize();
+    if (audio && audio.state === "suspended") audio.resume();
+    if (!audio) tick(); // unlock audio on this tap
+    var n = list.length, s = TAU / n;
+    var w = Math.floor(Math.random() * n);
+    var jitter = (Math.random() - 0.5) * s * 0.7;
+    var target = POINTER - (w + 0.5) * s + jitter;
+    var turns = reduced ? 2 : 7 + Math.floor(Math.random() * 3);
+    var to = rot + turns * TAU + mod(target - rot, TAU);
+    var spin = { id: uid(), order: list.map(function (e) { return { id: e.id, name: e.name }; }), winnerId: list[w].id, winnerName: list[w].name,
+                 from: rot, to: to, dur: reduced ? 2500 : 7000 + Math.random() * 1500, at: Date.now(),
+                 prizeId: np ? np.prize.id : null, prizeName: np ? np.prize.name : "", prizeNo: np ? np.index + 1 : 0 };
+    lastSpinId = spin.id;
+    save({ spin: spin });
+    animate(spin, true);
+  }
+
+  function animate(spin, isHost) {
+    spinning = true; $("spinBtn").disabled = true;
+    currentOrder = spin.order;
+    try { if (navigator.wakeLock) navigator.wakeLock.request("screen").catch(function () {}); } catch (e) {}
+    var n = spin.order.length, t0 = performance.now(), lastSlice = sliceAt(spin.from, n);
+    var ptr = $("pointer");
+    function frame(now) {
+      var t = Math.min(1, (now - t0) / spin.dur);
+      var e = 1 - Math.pow(1 - t, 4);
+      rot = spin.from + (spin.to - spin.from) * e;
+      var sl = sliceAt(rot, n);
+      if (sl !== lastSlice) { lastSlice = sl; tick(); ptr.classList.remove("flick"); void ptr.offsetWidth; ptr.classList.add("flick"); }
+      draw();
+      if (t < 1) requestAnimationFrame(frame);
+      else {
+        rot = mod(spin.to, TAU);
+        spinning = false; currentOrder = null;
+        showWinner(spin, isHost);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function showWinner(spin, isHost) {
+    $("winName").textContent = spin.winnerName;
+    $("winTag").textContent = spin.prizeNo ? "Winner · Prize " + spin.prizeNo : "Winner";
+    $("winSub").textContent = spin.prizeName ? "wins " + spin.prizeName + "!" : "Come grab your prize!";
+    $("winHost").hidden = !canHost; $("winGuest").hidden = canHost;
+    $("win").hidden = false;
+    fanfare(); confetti();
+    if (isHost) {
+      var winners = state.winners.concat([{ id: spin.winnerId, name: spin.winnerName, at: Date.now(), prizeId: spin.prizeId || null, prizeName: spin.prizeName || "" }]);
+      save({ winners: winners });
+    }
+    setTimeout(function () { (canHost ? $("winRemove") : $("winClose")).focus(); }, 50);
+  }
+  function closeWinner() { $("win").hidden = true; stopConfetti(); render(); }
+
+  $("winRemove").onclick = function () {
+    var id = state.spin && state.spin.winnerId;
+    if (id && state.removed.indexOf(id) < 0) save({ removed: state.removed.concat([id]) });
+    closeWinner();
+  };
+  $("winKeep").onclick = closeWinner;
+  $("winClose").onclick = closeWinner;
+  $("spinBtn").onclick = startSpin;
+  canvas.onclick = startSpin;
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("win").hidden) closeWinner(); });
+
+  // ---- Confetti -----------------------------------------------------------
+  var confRAF = null;
+  function confetti() {
+    if (reduced) return;
+    var c = $("confetti"), g = c.getContext("2d"), dpr = Math.min(devicePixelRatio || 1, 2);
+    c.width = innerWidth * dpr; c.height = innerHeight * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var cols = ["#0b0b0b", "#ffffff", "#fff3ea", "#b8460f"], ps = [];
+    for (var i = 0; i < 180; i++) ps.push({ x: innerWidth / 2 + (Math.random() - .5) * 80, y: innerHeight * .45, vx: (Math.random() - .5) * 16, vy: -Math.random() * 18 - 6,
+      w: 6 + Math.random() * 8, h: 4 + Math.random() * 6, r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: cols[i % 4] });
+    var start = performance.now();
+    function f(now) {
+      g.clearRect(0, 0, innerWidth, innerHeight);
+      ps.forEach(function (p) { p.vy += .45; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 2))); g.restore(); });
+      if (now - start < 4500) confRAF = requestAnimationFrame(f); else g.clearRect(0, 0, innerWidth, innerHeight);
+    }
+    stopConfetti(); confRAF = requestAnimationFrame(f);
+  }
+  function stopConfetti() { if (confRAF) cancelAnimationFrame(confRAF); confRAF = null; }
+
+  // ---- Lists --------------------------------------------------------------
+  function render() {
+    var live = entries(), all = allEntries();
+    var removed = {}; state.removed.forEach(function (id) { removed[id] = 1; });
+    var example = !all.length;
+    $("count").innerHTML = "";
+    var b = document.createElement("b"); b.textContent = example ? "No sign-ups yet" : live.length + (live.length === 1 ? " name" : " names");
+    $("count").appendChild(b);
+    $("count").appendChild(document.createTextNode(example ? "" : " on the wheel"));
+    var np = nextPrize(), done = prizesDone();
+    $("spinBtn").disabled = spinning || !canHost || !live.length || done;
+    $("spinBtn").textContent = !canHost ? "Waiting for the host to spin"
+      : done ? "All prizes are won"
+      : np ? "Spin for " + np.prize.name + (np.prize.count > 1 ? " (" + np.nth + " of " + np.prize.count + ")" : "")
+      : "Spin";
+    renderPrizes();
+    $("addForm").hidden = !canHost; $("resetRow").hidden = !canHost;
+
+    var ul = $("entryList"); ul.innerHTML = "";
+    if (example) {
+      var li = document.createElement("li"); li.className = "empty"; li.style.display = "block";
+      li.textContent = "Names appear here as people sign up with the QR code" + (canHost ? ", or add them by hand above." : ".");
+      ul.appendChild(li);
+    }
+    var cols = sliceColors(live.length), colorOf = {};
+    live.forEach(function (e, i) { colorOf[e.id] = cols[i].bg; });
+    all.forEach(function (e) {
+      var li = document.createElement("li"); if (removed[e.id]) li.className = "out";
+      var dot = document.createElement("span"); dot.className = "dot"; dot.style.background = colorOf[e.id] || "transparent"; dot.style.border = "1.5px solid #2c2420";
+      var n = document.createElement("span"); n.className = "n"; n.textContent = e.name;
+      var src = document.createElement("span"); src.className = "src"; src.textContent = e.src; n.appendChild(src);
+      li.appendChild(dot); li.appendChild(n);
+      if (canHost) {
+        var bt = document.createElement("button"); bt.className = "mini"; bt.type = "button";
+        bt.textContent = removed[e.id] ? "Put back" : "Remove";
+        bt.onclick = function () {
+          var r = state.removed.slice(), k = r.indexOf(e.id);
+          if (k >= 0) r.splice(k, 1); else r.push(e.id);
+          save({ removed: r });
+        };
+        li.appendChild(bt);
+      } else li.appendChild(document.createElement("span"));
+      ul.appendChild(li);
+    });
+
+    var ol = $("winList"); ol.innerHTML = "";
+    if (!state.winners.length) { var p = document.createElement("li"); p.className = "empty"; p.style.display = "block"; p.textContent = "No winners yet. Spin the wheel!"; ol.appendChild(p); }
+    state.winners.forEach(function (w) {
+      var li = document.createElement("li");
+      var n = document.createElement("span"); n.className = "n"; n.textContent = w.name;
+      if (w.prizeName) { var pl = document.createElement("div"); pl.className = "prizeline"; pl.textContent = w.prizeName; n.appendChild(pl); }
+      var t = document.createElement("time"); var d = new Date(w.at);
+      t.textContent = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+      li.appendChild(n); li.appendChild(t); ol.appendChild(li);
+    });
+    if (!spinning) draw();
+  }
+
+  // ---- Prizes editor ------------------------------------------------------
+  var prizeKey = "";
+  function renderPrizes() {
+    var box = $("prizeList");
+    $("prizeHostRow").hidden = !canHost;
+    // Don't rebuild while the host is typing in it.
+    var key = JSON.stringify([canHost, state.prizes, state.winners.map(function (w) { return w.prizeId; })]);
+    if (key === prizeKey || box.contains(document.activeElement)) return;
+    prizeKey = key; box.innerHTML = "";
+    if (!state.prizes.length) {
+      var e = document.createElement("p"); e.className = "empty";
+      e.textContent = canHost ? "No prizes. The wheel just picks winners. Add a prize to name it." : "No prizes listed.";
+      box.appendChild(e); return;
+    }
+    state.prizes.forEach(function (p, i) {
+      var given = prizeGiven(p);
+      var row = document.createElement("div"); row.className = "prize" + (given >= p.count ? " done" : "");
+      var num = document.createElement("span"); num.className = "num"; num.textContent = i + 1; row.appendChild(num);
+      var meta = document.createElement("div"); meta.className = "pmeta";
+      if (canHost) {
+        var nm = document.createElement("input"); nm.type = "text"; nm.className = "pname"; nm.maxLength = 60; nm.value = p.name;
+        nm.placeholder = "What is the prize?"; nm.setAttribute("aria-label", "Prize " + (i + 1) + " name");
+        nm.onchange = function () { updatePrize(p.id, { name: nm.value.trim() || "Prize " + (i + 1) }); };
+        row.appendChild(nm);
+        var lab = document.createElement("label"); lab.textContent = "Winners";
+        var ct = document.createElement("input"); ct.type = "number"; ct.min = "1"; ct.max = "50"; ct.inputMode = "numeric"; ct.value = p.count;
+        ct.setAttribute("aria-label", "Number of winners for prize " + (i + 1));
+        ct.onchange = function () { var v = Math.max(1, Math.min(50, parseInt(ct.value, 10) || 1)); ct.value = v; updatePrize(p.id, { count: v }); };
+        lab.appendChild(document.createTextNode(" ")); lab.appendChild(ct);
+        meta.appendChild(lab);
+        var st = document.createElement("span"); st.textContent = given + " won"; meta.appendChild(st);
+        var del = document.createElement("button"); del.type = "button"; del.className = "mini"; del.textContent = "Delete";
+        del.onclick = function () { save({ prizes: state.prizes.filter(function (x) { return x.id !== p.id; }) }); };
+        meta.appendChild(del);
+      } else {
+        var tt = document.createElement("span"); tt.className = "ptitle"; tt.textContent = p.name; row.appendChild(tt);
+        meta.textContent = given + " of " + p.count + (p.count === 1 ? " winner" : " winners");
+      }
+      row.appendChild(meta);
+      box.appendChild(row);
+    });
+  }
+  function updatePrize(id, patch) {
+    save({ prizes: state.prizes.map(function (x) { return x.id === id ? Object.assign({}, x, patch) : x; }) });
+  }
+  $("addPrize").onclick = function () {
+    var n = state.prizes.length + 1;
+    prizeKey = "";
+    save({ prizes: state.prizes.concat([{ id: "p" + uid(), name: "Prize " + n, count: 1 }]) });
+    var inputs = $("prizeList").querySelectorAll(".pname");
+    if (inputs.length) { inputs[inputs.length - 1].focus(); inputs[inputs.length - 1].select(); }
+  };
+
+  // ---- Contacts (emails): organisers only --------------------------------
+  var contacts = [];          // [{id, name, email, at}]
+  var contactsRef = null;
+  var contactsChain = Promise.resolve();
+  function localContacts(write) {
+    try { if (write) localStorage.setItem("ohug-contacts", JSON.stringify(contacts)); else { var s = localStorage.getItem("ohug-contacts"); if (s) contacts = JSON.parse(s); } } catch (e) {}
+  }
+  function saveContacts() {
+    var copy = JSON.parse(JSON.stringify({ list: contacts }));
+    if (contactsRef) contactsChain = contactsChain.then(function () { return contactsRef.set(copy); }).catch(function () { localContacts(true); });
+    else localContacts(true);
+  }
+
+  $("addForm").onsubmit = function (e) {
+    e.preventDefault();
+    var err = $("addErr"); err.hidden = true; $("addOk").hidden = true;
+    var name = $("addName").value.trim().slice(0, 40);
+    var email = $("addEmail").value.trim().toLowerCase().slice(0, 120);
+    function fail(m) { err.textContent = m; err.hidden = false; }
+    if (!name) return fail("Please write a name.");
+    var existing = email && contacts.filter(function (c) { return c.email === email; })[0];
+    if (existing) {
+      existing.name = name; existing.at = Date.now();
+      save({ manual: state.manual.map(function (m) { return m.id === existing.id ? { id: m.id, name: name } : m; }) });
+    } else {
+      var id = "m-" + uid();
+      save({ manual: state.manual.concat([{ id: id, name: name }]) });
+      if (email) contacts.push({ id: id, name: name, email: email, at: Date.now() });
+    }
+    if (email) saveContacts();
+    $("addName").value = ""; $("addEmail").value = "";    $("addOk").textContent = (existing ? "Updated: " : "You’re on the wheel, ") + name + (existing ? "" : "!");
+    $("addOk").hidden = false;
+    setTimeout(function () { $("addOk").hidden = true; }, 4000);
+  };
+
+  $("copyEmails").onclick = function () {
+    var text = contacts.map(function (c) { return c.name + " <" + c.email + ">"; }).join("\n");
+    var ta = $("emailDump");
+    ta.value = text || "No emails collected yet.";
+    ta.hidden = false;
+    var btn = this;
+    try { navigator.clipboard.writeText(text).then(function () { btn.textContent = "Copied " + contacts.length; }, function () { ta.select(); }); } catch (e) { ta.select(); }
+  };
+  $("resetBtn").onclick = function () { $("resetYes").hidden = !$("resetYes").hidden; };
+  $("resetYes").onclick = function () { $("resetYes").hidden = true; save({ winners: [], removed: [], spin: null }); };
+  var wipeArmed = null;
+  function disarmWipe() {
+    clearTimeout(wipeArmed); wipeArmed = null;
+    var b = $("wipeBtn"); b.textContent = "Delete all names"; b.style.background = ""; b.style.color = "";
+  }
+  $("wipeBtn").onclick = function () {
+    var b = $("wipeBtn");
+    if (!wipeArmed) {
+      b.textContent = "Tap again to delete everything"; b.style.background = "var(--orange)"; b.style.color = "var(--ink)";
+      wipeArmed = setTimeout(disarmWipe, 5000);
+      return;
+    }
+    disarmWipe();
+    contacts = []; localContacts(true); saveContacts();
+    try { localStorage.removeItem("ohug-wheel"); } catch (e) {}
+    save({ sheet: [], manual: [], winners: [], removed: [], spin: null });
+    $("emailDump").hidden = true; showNote("All names deleted. The wheel is empty.");
+    setTimeout(function () { showNote(""); }, 4000);
+  };
+
+  // tabs
+  ["entries", "prizes", "winners", "signup"].forEach(function (k) {
+    $("t-" + k).onclick = function () {
+      ["entries", "prizes", "winners", "signup"].forEach(function (j) { $("t-" + j).setAttribute("aria-selected", j === k); $("p-" + j).hidden = j !== k; });
+      try { localStorage.setItem("ohug-tab", k); } catch (e) {}
+    };
+  });
+
+  // QR
+  var hasSignup = SIGNUP_URL.indexOf("http") === 0;
+  $("signupUrl").textContent = hasSignup ? SIGNUP_URL : "The sign-up link is not set yet.";
+  if (hasSignup && window.QRCode) {
+    new QRCode($("qr"), { text: SIGNUP_URL, width: 512, height: 512, colorDark: "#0b0b0b", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+  } else $("qr").hidden = true;
+  $("copyUrl").hidden = !hasSignup;
+  if (!hasSignup) { $("t-signup").hidden = true; }
+  $("refreshBtn").hidden = SHEET_ID.indexOf("__") === 0;
+  $("copyUrl").onclick = function () {
+    var btn = this;
+    try { navigator.clipboard.writeText(SIGNUP_URL).then(function () { btn.textContent = "Copied"; }, sel); } catch (e) { sel(); }
+    function sel() { var r = document.createRange(); r.selectNodeContents($("signupUrl")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  };
+
+  // ---- Google Sheet sync (host only) -------------------------------------
+  function findValues(p) {
+    if (typeof p === "string") { try { p = JSON.parse(p); } catch (e) { return null; } }
+    if (!p || typeof p !== "object") return null;
+    if (Array.isArray(p.values)) return p.values;
+    for (var k in p) { if (p[k] && typeof p[k] === "object") { var v = findValues(p[k]); if (v) return v; } }
+    return null;
+  }
+  function applySheet(result) {
+    var vals = findValues(result.payload);
+    if (!vals) {
+      var txt = (result.content || []).filter(function (c) { return c.type === "text"; }).map(function (c) { return c.text; }).join("");
+      vals = findValues(txt) || [];
+    }
+    var list = [];
+    vals.forEach(function (row, i) { var nm = String((row && row[0]) || "").replace(/^'/, "").trim(); if (nm) list.push({ id: "r" + (i + 2), name: nm.slice(0, 40) }); });
+    sheetSyncedAt = (result.cache && result.cache.storedAt) || Date.now();
+    updateSync();
+    if (JSON.stringify(list) !== JSON.stringify(state.sheet)) save({ sheet: list });
+  }
+  function updateSync() {
+    if (!sheetSyncedAt) return;
+    var s = Math.round((Date.now() - sheetSyncedAt) / 1000);
+    $("sync").textContent = "Sign-ups checked " + (s < 5 ? "just now" : s < 90 ? s + " s ago" : Math.round(s / 60) + " min ago");
+  }
+  setInterval(updateSync, 5000);
+
+  function sheetError(err) {
+    var c = err && err.code;
+    if (c === "needs_reauth") showNote("Reconnect Google Sheets in claude.ai Settings → Connectors to load sign-ups.");
+    else if (c === "server_not_connected" || c === "selection_required") showNote("Add the Google Sheets connector in claude.ai Settings → Connectors to load sign-ups. You can still add names by hand.");
+    else if (c === "not_in_manifest" || c === "approval_required") showNote("This page needs your OK to read the sign-up Sheet. Tap “Refresh sign-ups now” to allow it.");
+    else if (c === "tool_error") showNote("Google Sheets answered with an error. Check that the sign-up Sheet still exists.");
+    else showNote("Could not reach Google Sheets just now. The wheel keeps the last names it loaded.");
+  }
+
+  function startSheetSync() {
+    if (!mcp || SHEET_ID.indexOf("__") === 0) return;
+    mcp.watchTool(SHEETS, "get_values", { spreadsheetId: SHEET_ID, range: NAME_RANGE }, function (ev) {
+      if (ev.type === "data") { showNote(""); applySheet(ev.result); } else sheetError(ev.error);
+    }, { refetchInterval: 30000 });
+  }
+  $("refreshBtn").onclick = function () {
+    if (!mcp) { showNote("Sign-ups load only on the organiser's own claude.ai account."); return; }
+    var btn = this; btn.disabled = true; btn.textContent = "Checking…";
+    mcp.callTool(SHEETS, "get_values", { spreadsheetId: SHEET_ID, range: NAME_RANGE }, { cache: { staleTime: 0, gcTime: 300000, refresh: true } })
+      .then(function (r) { showNote(""); applySheet(r); }, sheetError)
+      .then(function () { btn.disabled = false; btn.textContent = "Refresh sign-ups now"; });
+  };
+
+  // ---- Boot ---------------------------------------------------------------
+  window.addEventListener("resize", resize);
+  try { var tab = localStorage.getItem("ohug-tab"); if (tab && $("t-" + tab)) $("t-" + tab).click(); } catch (e) {}
+  localLoad(); localContacts(false);
+  canHost = true;          // until the platform says otherwise, this phone runs the wheel locally
+  resize(); render();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { draw(); });
+
+  if (!window.claude || !window.claude.use) return;
+  Promise.all([claude.use("db"), claude.use("user"), claude.use("mcp")]).then(function (r) {
+    db = r[0]; user = r[1]; mcp = r[2];
+    return Promise.all([user ? user.canEdit() : false, user ? user.isOwner() : false]);
+  }).then(function (r) {
+    var isEditor = r[0], isOwner = r[1];
+    if (db) {
+      canHost = !!isEditor;
+      docRef = db.doc("wheel/state");
+      if (canHost) {
+        contactsRef = db.doc("hostonly/contacts");
+        var firstC = true;
+        contactsRef.onSnapshot(function (snap) {
+          var d = snap.exists ? snap.data() : null;
+          if (d && Array.isArray(d.list)) contacts = JSON.parse(JSON.stringify(d.list));
+          else if (firstC && contacts.length) saveContacts();
+          firstC = false;
+        }, function () {});
+      }
+      var loadTimer = setTimeout(function () { showNote("The shared wheel can't be reached yet. Showing what this phone remembers."); }, 10000);
+      var first = true;
+      docRef.onSnapshot(function (snap) {
+        if (!snap.metadata.fromCache) { clearTimeout(loadTimer); }
+        var d = snap.exists ? snap.data() : null;
+        if (d) {
+          state = { sheet: d.sheet || [], manual: d.manual || [], removed: d.removed || [], winners: d.winners || [], spin: d.spin || null,
+                    prizes: Array.isArray(d.prizes) ? d.prizes : DEFAULT_PRIZES.slice() };
+          var sp = state.spin;
+          if (sp && sp.id !== lastSpinId) {
+            lastSpinId = sp.id;
+            if (!first && !spinning && Date.now() - sp.at < 20000) animate(sp, false);
+            else if (!spinning) rot = mod(sp.to, TAU);
+          }
+        } else if (first && canHost) {
+          // first run: carry over anything kept on this phone
+          var local = JSON.parse(JSON.stringify(state));
+          if (local.sheet.length || local.manual.length || local.winners.length) save(local);
+        }
+        first = false;
+        render();
+      }, function () { clearTimeout(loadTimer); showNote("The shared wheel stopped updating. Reload the page to reconnect."); });
+    } else {
+      canHost = true;
+    }
+    render();
+    if (isOwner && mcp) startSheetSync();
+  }).catch(function () { render(); });
+})();
+</script>
+</body>
+</html>
