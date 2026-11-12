@@ -383,13 +383,53 @@
   $("soundBtn").onclick = function () {
     soundOn = !soundOn; showSound();
     try { localStorage.setItem("ohug-sound", soundOn ? "on" : "off"); } catch (e) {}
-    if (soundOn) tick();
+    if (soundOn) { unlockAudio(); tick(); }
   };
   showSound();
+
+  // Phones only allow sound after a tap, and iPhone mutes web sound on the silent switch
+  // unless the page says it is a media player. Wake the sound up on every tap.
+  var silentWav = null;
+  function makeSilentWav() {
+    var n = 800, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    function s(o, t) { for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }
+    s(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); s(8, "WAVE"); s(12, "fmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    s(36, "data"); v.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  }
+  var htmlUnlocked = false;
+  function unlockAudio() {
+    if (!soundOn) return;
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state !== "running") audio.resume();
+      var b = audio.createBuffer(1, 1, 22050), src = audio.createBufferSource();
+      src.buffer = b; src.connect(audio.destination); src.start(0);
+    } catch (e) {}
+    if (!htmlUnlocked) {
+      try {
+        if (!silentWav) silentWav = makeSilentWav();
+        var el = new Audio(silentWav); el.setAttribute("playsinline", ""); el.volume = 0.01;
+        var p = el.play(); htmlUnlocked = true;
+        if (p && p.catch) p.catch(function () { htmlUnlocked = false; });
+      } catch (e) {}
+    }
+  }
+  ["pointerdown", "touchend", "click", "keydown"].forEach(function (ev) {
+    document.addEventListener(ev, unlockAudio, { capture: true, passive: true });
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && audio && audio.state !== "running") { try { audio.resume(); } catch (e) {} }
+  });
+
   function tick() {
     if (!soundOn) return;
     try {
       if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state !== "running") audio.resume();
       var t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
       o.type = "square"; o.frequency.setValueAtTime(1500, t); o.frequency.exponentialRampToValueAtTime(600, t + 0.03);
       g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
@@ -419,8 +459,7 @@
     var list = entries();
     if (!list.length || prizesDone()) return;
     var np = nextPrize();
-    if (audio && audio.state === "suspended") audio.resume();
-    if (!audio) tick(); // unlock audio on this tap
+    unlockAudio();
     var n = list.length, s = TAU / n;
     var w = Math.floor(Math.random() * n);
     var jitter = (Math.random() - 0.5) * s * 0.7;
