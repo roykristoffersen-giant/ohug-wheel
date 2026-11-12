@@ -573,12 +573,16 @@
       if (canHost) {
         var nm = document.createElement("input"); nm.type = "text"; nm.className = "pname"; nm.maxLength = 60; nm.value = p.name;
         nm.placeholder = "What is the prize?"; nm.setAttribute("aria-label", "Prize " + (i + 1) + " name");
-        nm.onchange = function () { updatePrize(p.id, { name: nm.value.trim() || "Prize " + (i + 1) }); };
+        var nmTimer = null;
+        var saveName = function () { clearTimeout(nmTimer); var v = nm.value.trim(); if (v && v !== p.name) { p = Object.assign({}, p, { name: v }); updatePrize(p.id, { name: v }); } };
+        nm.oninput = function () { clearTimeout(nmTimer); nmTimer = setTimeout(saveName, 400); };
+        nm.onchange = nm.onblur = saveName;
         row.appendChild(nm);
         var lab = document.createElement("label"); lab.textContent = "Winners";
         var ct = document.createElement("input"); ct.type = "number"; ct.min = "1"; ct.max = "50"; ct.inputMode = "numeric"; ct.value = p.count;
         ct.setAttribute("aria-label", "Number of winners for prize " + (i + 1));
-        ct.onchange = function () { var v = Math.max(1, Math.min(50, parseInt(ct.value, 10) || 1)); ct.value = v; updatePrize(p.id, { count: v }); };
+        ct.oninput = ct.onchange = function () {
+          if (ct.value === "") return; var v = Math.max(1, Math.min(50, parseInt(ct.value, 10) || 1)); ct.value = v; updatePrize(p.id, { count: v }); };
         lab.appendChild(document.createTextNode(" ")); lab.appendChild(ct);
         meta.appendChild(lab);
         var st = document.createElement("span"); st.textContent = given + " won"; meta.appendChild(st);
